@@ -413,5 +413,137 @@ Acesso Direto à Cache (DCA)
 
 <!-- end_slide -->
 
-Arquitetura interna do Intel DDIO, Cache Pollution e tunagem
+Canais e E/S e programas de canal
 ========================================
+
+# Canais de E/S
+- Operam como um processadores copartícipe autônomos e de propósito específico, dotados de seus próprios conjunto de instruções de manipulação de barramento especializado para operações de E/S
+- Execuções de rotinas de E/S de baixo nível são transferidas para o canal
+- CPU passa a tratar apenas a inicialização do canal e a indicação da localização de um **Programa de Canal** para o mesmo
+
+# Programas de Canal e Offloading
+## ***Offloading***
+- Transferência de responsabilidade de execução de rotinas de E/S da CPU para o canal
+- Com os canais, a CPU deixa de interagir de forma direta com sinais de controles mecânicos, trilhas físicas de disco ou barramentos de rede
+
+## Programas de Canal
+- Contruído por uma sequência lógica de Palavras de Comando de Canal (CCWs)
+- As CCWs insturem o hardware do canal sobre quais setores ler, quais blocos varrer, onde alocar os dados de recebimento na memória principal e quais ações corretivas de hardware tomar em caso de falhas
+- Organizados em duas grandes classes:
+  - **Canal seletor:** Dedica-se de forma exclusiva e ininterrupta à transferência de dados com um único dispositivo de alta velocidade a cada vez, controlando um pequeno cluster de controladores.
+  - **Canal multiplexador:** Permite que múltiplos dispositivos de baixa velocidade compartilhem o mesmo canal, alternando entre eles de forma rápida e eficiente.
+    - **Multiplexador de Byte:** Para periféricos lentos
+    - **Multiplexador de Bloco:** intercalando registros e blocos de dados completos em transações síncronas rápidas de múltiplos periféricos rápidos de armazenamento
+
+<!-- end_slide -->
+
+Padrões de interconexão externa e tecidos de rede de alta velocidade
+========================================
+
+# Barramentos de interconexão externa
+- Estabelecem as interfaces físicas, elétricas e de sinalização de dados que interligam os controladores internos aos dispositivos periféricos e equipamentos remotos.
+- Evolução de barramentos paralelos para barramentos seriais
+  - **Barramentos paralelos:**
+    - Vários bits transmitidos simultaneamente.
+    - Limitados por interferência, capacitância e sincronização.
+    - Adequados apenas para curtas distâncias.
+  - **Barramentos seriais:**
+    - Poucos fios operando em alta frequência.
+    - Comunicação baseada em pacotes.
+    - Maior velocidade, confiabilidade e escalabilidade (PCIe, USB, SATA).
+
+```
+                     EVOLUÇÃO DOS TECIDOS DE CONECTIVIDADE
++-----------------------------------------------------------------------------+
+|                               PCIe Gen 6                                    |
+|   - Interface física e elétrica baseada em link serial ponto a ponto        |
+|   - Codificação elétro-analógica PAM-4 com sinalização de 64 GT/s           |
++-------------------------------------+---------------------------------------+
+                                      |
+                                      | Camada de Transporte Física
+                                      v
++-------------------------------------+---------------------------------------+
+|                    COMPUTE EXPRESS LINK (CXL v3.1)                          |
+|                                                                             |
+|  +-----------------------+  +-----------------------+  +-----------------+  |
+|  |        CXL.io         |  |       CXL.cache       |  |     CXL.mem     |  |
+|  | - Transações normais  |  | - Acesso coerente     |  | - CPU acessa    |  |
+|  |   de controle PCIe.   |  |   do acelerador à L3. |  |   RAM do acc.   |  |
+|  +-----------------------+  +-----------------------+  +-----------------+  |
++-----------------------------------------------------------------------------+
+```
+
+<!-- end_slide -->
+
+***Compute Express Link (CXL)*** protocols
+========================================
+
+- Opera de forma paralela sobre a infraestrutura física e analógica de links diferenciais do PCIe Gen 5 e Gen 6
+
+- Possui três sub-protocolos dinamicamente multiplexados em flits (unidades de controle de fluxo de dados de alta eficiência elétrico-lógica):
+  - **CXL.io** → Transações de controle PCIe padrão, compatível com dispositivos PCIe existentes
+  - **CXL.cache** → Permite que aceleradores acessem a cache L3 da CPU de forma coerente, compartilhando dados com a CPU sem cópias redundantes
+  - **CXL.mem** → Permite que a CPU acesse a memória local do acelerador, expandindo o espaço de memória do sistema e permitindo o uso de memória não volátil como RAM
+
+- Classifica os dispositivos em 3 categorias:
+  - **Dispositivos tipo 1 (SmartNICs)**
+  - **Dispositivos tipo 2 (GPUs e FPGAs de alto desempenho)**
+  - **Dispositivos tipo 3 (expansores de memória)**
+
+<!-- end_slide -->
+
+Padrões de conectividade de uso geral e periféricos de consumo
+========================================
+
+| **Interface** | **Aplicação típica** | **Destaque** |
+|:-------------|:---------------------|:-------------|
+| USB | Mouse, teclado, pendrive, webcam | Universal, hot-plug e fornece energia |
+| FireWire (IEEE 1394) | Câmeras digitais e áudio profissional | Transferência isócrona e comunicação *peer-to-peer* |
+| Thunderbolt | Monitores, docks, SSDs externos | Alta largura de banda e transporte PCIe/DisplayPort |
+| SATA | HDDs e SSDs internos | Interface dedicada para armazenamento |
+| Ethernet / Wi-Fi | Redes locais e Internet | Comunicação entre computadores e dispositivos remotos |
+
+
+<!-- end_slide -->
+
+Estrutura de E/S de alto desempenho
+========================================
+
+# IBM zEnterprise EC12
+- Arquitetura E/S dedicada projetada para elminar por completo penalidades de processamento
+- Subsistemas de canais dedicados (CSS - ***Channel Subsytem***)
+- Descarregamento de tarefas para Processadores de Assistência de Sistema (SAP) especializados
+
+```
+                IBM zENTERPRISE EC12 I/O SYSTEM
++-------------------------------------------------------------+
+|               Gaiola de Processadores Primários             |
+|                                                             |
+|  +------------------------+     +------------------------+  |
+|  |     Processor Book     |     |     Processor Book     |  |
+|  |  +------------------+  |     |  +------------------+  |  |
+|  |  |    Active SAP    |  |     |  |    Active SAP    |  |  |
+|  |  +--------+---------+  |     |  +--------+---------+  |  |
+|  +-----------|------------+     +-----------|------------+  |
++--------------|------------------------------|---------------+
+               | InfiniBand                   | PCIe
+               | Fanout                       | Fanout
+               v                              v
++--------------+------------------------------+---------------+
+|                Mecanismo de Fanouts / Comutadores           |
++--------------+------------------------------+---------------+
+               |                              |
+               v                              v
++--------------+-------------+    +-----------+---------------+
+| Gaiola de E/S / I/O Drawer |    | I/O Drawer PCIe           |
+|                              |                              |
+|  +-----------------------+  |    |  +--------------------+  |
+|  | Multiplexador ESCON   |  |    |  | Comutador PCIe     |  |
+|  +-----------+-----------+  |    |  +--------+-----------+  |
+|              |              |    |           |              |
+|              v              |    |           v              |
+|  +-----------+-----------+  |    |  +--------+-----------+  |
+|  | Fita / Armaz. de Fibra|  |    |  | Canal de Fibra 16G |  |
+|  +-----------------------+  |    |  +--------------------+  |
++-----------------------------+    +--------------------------+
+```
