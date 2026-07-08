@@ -8,8 +8,8 @@
 
 - [ ] Seminário - parte teórica (mín. 30min)
 - [ ] Atividade prática (mín. 30min)
-- [ ] Questionário avaliativo (5-10 questões) — entregar até 30/06
-- [ ] Material Notion
+- [x] Questionário avaliativo (5-10 questões) — entregar até 30/06
+- [x] Material Notion - https://app.notion.com/p/Sistemas-de-Entrada-Sa-da-395ec95514fc805bbecad83311a99918?source=copy_link
 
 ## 1. Dispositivos externos, transdutores e módulos de E/S
 

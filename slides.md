@@ -377,4 +377,32 @@ Mecânica de tradução IOMMU
 
 Adicionando uma camada de segurança, ***IOMMU*** atua como uma barreira lógica inserida na raiz do barramento PCIe. Sob esse modelo, os periféricos passam a referenciar os endereços em um espaço virtual específico de E/S chamado de Endereço Virtual de E/S (I/O *Virtual Address* - IOVA)
 
+O IOMMU intercepta transações do ciclo PCIe e realiza a tradução para o endereço físico correspondente usando uma tabela de páginas de E/S
 
+A segurança adicional impõe custo de latência de barramento, para amenizar esse custo as IOMMUs utilizam caches internos de tradução conhecidos como IOTLBs (I/O Translation Lookaside Buffers)
+
+Sistemas operacionais de alto rendimento utilizam modos otimizados de controle
+- **Modo Pass-Through (*intel_iommu=on iommu=pt*)**
+  - Ignora a tradução de dispositivos que operam nativamente no host
+- **Modo Diferido (*Lazy/Deferred Mode*)**
+  - Invalida o cache em lote em vez de realizar chamadas de invalidação a cada desalocação de página
+
+![alt text](./images/image.png)
+
+<!-- end_slide -->
+
+Tecnologias de controle de DMA
+========================================
+
+| **Característica** | **DMA Clássico** | **Scatter-Gather DMA** | **DMA com IOMMU**
+| --- | --- | --- | --- |
+| Endereço | Endereços físicos e contíguos | Cadeis de endereços físicos | Endereço virtual traduzido pela IOMMU
+| Segurança de acesso | Inexistente | Inexistente | Acesso restrito a páginas explicitamente mapeadas
+| Penalidade de latência | Nula no nível do barramento | Baixa, gerada pela varredura dos anéis | Moderada devido à tradução
+
+<!-- end_slide -->
+
+Acesso Direto à Cache (DCA)
+========================================
+
+**Proposta:** Solucionar 
