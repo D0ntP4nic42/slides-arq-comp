@@ -405,4 +405,13 @@ Tecnologias de controle de DMA
 Acesso Direto à Cache (DCA)
 ========================================
 
-**Proposta:** Solucionar 
+**Proposta:** Solucionar o gargalo do DMA gerado pela necessidade de constante acesso à DRAM física
+
+**Solução:** O DCA soluciona essa restrição ao permitir que os pacotes de dados de E/S provenientes de dispositivos PCIe sejam injetados diretamente na cache de último nível (L3)
+
+![alt text](./images/image_2.png)
+
+<!-- end_slide -->
+
+Arquitetura interna do Intel DDIO, Cache Pollution e tunagem
+========================================
