@@ -117,7 +117,7 @@ Os periféricos são classificados pelo **alvo da informação** e pela **nature
 **Dois padrões de operação:**
 
 - **Fluxo de caracteres:** usado por dispositivos humanos (ex: teclado envia códigos ASCII por pressionamento de tecla).
-- **Transdução em blocos:** usada por dispositivos de máquina (ex: disco lê/egrava setores inteiros, exigindo buffers e ECC).
+- **Transdução em blocos:** usada por dispositivos de máquina (ex: disco lê e grava setores inteiros, exigindo buffers e ECC).
 
 <!-- end_slide -->
 
@@ -182,7 +182,7 @@ Técnica que mitiga problemas de ociosidade utilizando **requisições de interr
 
 A CPU **não permanece presa em laços de repetição**. Ela continua a execução de outras tarefas úteis e aguarda a requisição de interrupção do módulo E/S
 
-Ao receber a requisição, a interrupção é tratado por uma rtina específica (ISR)
+Ao receber a requisição, a interrupção é tratado por uma rotina específica (ISR)
 
 Finalizando a transação com o módulo E/S, a CPU volta a tarefa original sem perda de contexto
 
@@ -253,7 +253,7 @@ Como determinar qual módulo gerou a requisição de interrupção?
 
 **4. Arbitragem de Barramento**
 
-  - Os dispositvos de E/S solicitam acesso ao barramento através do **árbitro de barrameto**
+  - Os dispositivos de E/S solicitam acesso ao barramento através do **árbitro de barramento**
   - A prioridade de acesso ao barramento é definida por ele
   - O dispositivo escolhido pelo árbitro recebe o nome de ***bus master***
   - Esse dispositivo coloca seu identificador nas linhas de dados e a CPU executa a rotina de tratamento correspondente
@@ -275,7 +275,7 @@ Posteriormente, abandonando as linhas físicas analógicas de interrupção, sur
 
 No **MSI** e **MSI-X**, o dispositivo E/S realiza uma escrita de dados na banda principal do barramento PCIe apontando para um endereço de memória especial pertencente ao **LAPIC** do processador
 
-No **MSI-X**, cada vetor possui um endereço de memória física de destino e uma palavra de dados específica definidoes em uma tabela dinâmica mantida na memória interna do periférico, permitindo que cada interrupção seja direcionada a um núcleo específico da CPU
+No **MSI-X**, cada vetor possui um endereço de memória física de destino e uma palavra de dados específica definidos em uma tabela dinâmica mantida na memória interna do periférico, permitindo que cada interrupção seja direcionada a um núcleo específico da CPU
 
 <!-- end_slide -->
 
@@ -294,14 +294,14 @@ Evolução de PIC para APIC e MSI-X
 ## MSI-X
 - Flexível; cada interrupção pode ser direcionada a qualquer núcleo individual
 - Tabela na memória do dispositivo mapeada dinamicamente por vetor
-- Vetores em maior quantidade e mais flexiveis, permitindo melhor desempenho em sistemas multicore
+- Vetores em maior quantidade e mais flexíveis, permitindo melhor desempenho em sistemas multicore
 
 <!-- end_slide -->
 
 Acesso Direto à Memória (DMA)
 ========================================
 
-Elimina a desvantagem inerente à E/S controloda por interrupções em fluxos de transferência de alto volume, onde cada byte que transita da memória principal para o periférico deve passar obrigatoriamente pelos registradores da CPU
+Elimina a desvantagem inerente à E/S controlada por interrupções em fluxos de transferência de alto volume, onde cada byte que transita da memória principal para o periférico deve passar obrigatoriamente pelos registradores da CPU
 
 Funciona como um **coprocessador** especialista, assumindo o controle temporário dos barramentos do sistema para transferir blocos de dados diretamente entre os periféricos e a memória física através da técnica de roubo de ciclos (***cycle stealing***)
 
@@ -366,7 +366,7 @@ O módulo de DMA executa varreduras sequenciais nos descritores físicos, encade
 |                                              |
 |                      ↓                       |
 |                                              |
-|                Controlodar DMA               |
+|                Controlador DMA               |
 +----------------------------------------------+
 ```
 
@@ -396,7 +396,7 @@ Tecnologias de controle de DMA
 
 | **Característica** | **DMA Clássico** | **Scatter-Gather DMA** | **DMA com IOMMU**
 | --- | --- | --- | --- |
-| Endereço | Endereços físicos e contíguos | Cadeis de endereços físicos | Endereço virtual traduzido pela IOMMU
+| Endereço | Endereços físicos e contíguos | Cadeias de endereços físicos | Endereço virtual traduzido pela IOMMU
 | Segurança de acesso | Inexistente | Inexistente | Acesso restrito a páginas explicitamente mapeadas
 | Penalidade de latência | Nula no nível do barramento | Baixa, gerada pela varredura dos anéis | Moderada devido à tradução
 
@@ -427,8 +427,8 @@ Canais e E/S e programas de canal
 - Com os canais, a CPU deixa de interagir de forma direta com sinais de controles mecânicos, trilhas físicas de disco ou barramentos de rede
 
 ## Programas de Canal
-- Contruído por uma sequência lógica de Palavras de Comando de Canal (CCWs)
-- As CCWs insturem o hardware do canal sobre quais setores ler, quais blocos varrer, onde alocar os dados de recebimento na memória principal e quais ações corretivas de hardware tomar em caso de falhas
+- Construído por uma sequência lógica de Palavras de Comando de Canal (CCWs)
+- As CCWs instruem o hardware do canal sobre quais setores ler, quais blocos varrer, onde alocar os dados de recebimento na memória principal e quais ações corretivas de hardware tomar em caso de falhas
 - Organizados em duas grandes classes:
   - **Canal seletor:** Dedica-se de forma exclusiva e ininterrupta à transferência de dados com um único dispositivo de alta velocidade a cada vez, controlando um pequeno cluster de controladores.
   - **Canal multiplexador:** Permite que múltiplos dispositivos de baixa velocidade compartilhem o mesmo canal, alternando entre eles de forma rápida e eficiente.
@@ -510,7 +510,7 @@ Estrutura de E/S de alto desempenho
 ========================================
 
 # IBM zEnterprise EC12
-- Arquitetura E/S dedicada projetada para elminar por completo penalidades de processamento
+- Arquitetura E/S dedicada projetada para eliminar por completo penalidades de processamento
 - Subsistemas de canais dedicados (CSS - ***Channel Subsytem***)
 - Descarregamento de tarefas para Processadores de Assistência de Sistema (SAP) especializados
 
