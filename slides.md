@@ -174,3 +174,207 @@ A CPU pode cachear registradores de E/S, mas eles mudam o tempo todo. Se forem c
 **Solução:** marcar MMIO como **Uncacheable** e **Strongly Ordered**, forçando a CPU a acessar o registrador real diretamente.
 
 <!-- end_slide -->
+
+E/S controlada por interrupção e evolução dos co-processadores de interrupção
+========================================
+
+Técnica que mitiga problemas de ociosidade utilizando **requisições de interrupção**
+
+A CPU **não permanece presa em laços de repetição**. Ela continua a execução de outras tarefas úteis e aguarda a requisição de interrupção do módulo E/S
+
+Ao receber a requisição, a interrupção é tratado por uma rtina específica (ISR)
+
+Finalizando a transação com o módulo E/S, a CPU volta a tarefa original sem perda de contexto
+
+```
++-------------------------------------------------------------+
+|                     BARRAMENTO DE SISTEMA                   |
++------------------------------+------------------------------+
+                               |
+                   +-----------v-----------+
+                   |     I/O APIC (PCH)    | (Controlador de interrupções
+                   +-----------+-----------+  de sistema no chipset)
+                               |
+               In-Band PCIe    | (Redirecionamento de Interrupção
+               MSI-X Message   |  via barramento de sistema)
+                               v
++-------------------------------------------------------------+
+|                         CPU MULTICORE                       |
+|                                                             |
+|  +--------------------+             +--------------------+  |
+|  |  Núcleo 0 (Core 0) |             |  Núcleo 1 (Core 1) |  |
+|  |  +--------------+  |             |  +--------------+  |  |
+|  |  |  Local APIC  |  |             |  |  Local APIC  |  |  |
+|  |  +-------+------+  |             |  +-------+------+  |  |
+|  +----------|---------+             +----------|---------+  |
+|             v                                  v            |
+|       MSI Vector 64                      MSI Vector 82      |
+|    (Assigned to Core 0)               (Assigned to Core 1)  |
++-------------------------------------------------------------+
+```
+
+<!-- end_slide -->
+
+Como determinar qual módulo gerou a requisição de interrupção?
+========================================
+
+Com muitos periféricos compartilhando a capacidade de interromper a CPU, como saber qual módulo gerou a requisição de interrupção?
+
+**1. Múltiplas linhas de interrupção físicas**
+  - Abordagem direta, fornece linhas físicas dedicadas e independentes no barramento entre cada módulo E/S e a CPU
+  - **Vantagem:**
+    - Extremamente rápida
+  - **Desvantagem:**
+    - Inviável para sistemas complexos devido à limitação física de pinagem do encapsulamento do processador
+
+**2. Varredura de software**
+  - Após a interrupção, a CPU é desviada para uma rotina geral de serviço que, primeiro, tem como objetivo identificar qual módulo E/S foi o autor da interrupção
+  - É realizada uma varredura em cada módulo E/S para encontrar em seus registradores de estado o bit que indica a autoria da interrupção
+  - **Vantagem:**
+    - Barata em termos de hardware
+  - **Desvantagem:**
+    - Latência do sistema mais alta pelo tempo gasto interrogando cada módulo
+
+<!-- end_slide -->
+
+Como determinar qual módulo gerou a requisição de interrupção?
+========================================
+
+**3. Encadeamento de margarida (Daisy Chain)**
+
+  1. Um ou mais módulos solicitam uma interrupção à CPU.
+  2. Quando a CPU aceita a interrupção, ela envia um sinal de reconhecimento (`Interrupt Acknowledge`), que percorre os módulos em série.
+  3. O primeiro módulo que possui uma interrupção pendente intercepta esse sinal, impedindo que ele continue para os demais módulos.
+  4. Em seguida, esse módulo coloca seu identificador (vetor de interrupção) no barramento de dados, permitindo que a CPU identifique qual dispositivo solicitou a interrupção e execute a rotina de tratamento correspondente.
+  - **Vantagem:**
+    - Implementação simples e de baixo custo, prioridade entre os dispositivos é definida pela ordem física
+  - **Desvantagem:**
+    - A prioridade entre os dispositivos é fixa, dispositivos mais próximos da CPU sempre têm precedência
+
+**4. Arbitragem de Barramento**
+
+  - Os dispositvos de E/S solicitam acesso ao barramento através do **árbitro de barrameto**
+  - A prioridade de acesso ao barramento é definida por ele
+  - O dispositivo escolhido pelo árbitro recebe o nome de ***bus master***
+  - Esse dispositivo coloca seu identificador nas linhas de dados e a CPU executa a rotina de tratamento correspondente
+  - **Vantagem:**
+    - Maior flexibilidade e desempenho, pois a prioridade pode ser configurável ou dinâmica, evitando que um dispositivo fique permanentemente em desvantagem.
+  - **Desvantagem:**
+    - Hardware mais complexo e mais caro, devido à necessidade de um mecanismo dedicado para arbitrar o acesso ao barramento.
+
+<!-- end_slide -->
+
+Evolução de PIC para APIC e MSI-X
+========================================
+
+O tratamento de interrupções clássico, baseado em **PIC** (Programmable Interrupt Controller), tornou-se insuficiente para lidar com a complexidade dos sistemas modernos.
+
+Com o surgimento de arquiteturas multicore, foi necessário evoluir para **APIC** (Advanced Programmable Interrupt Controller) composta por unidades locais **LAPIC** integradas individualmente em cada núcleo da CPU
+
+Posteriormente, abandonando as linhas físicas analógicas de interrupção, surgiram as Interrupções Sinalizadas por Mensagem (**MSI** e **MSI-X**) no barramento PCI Express
+
+No **MSI** e **MSI-X**, o dispositivo E/S realiza uma escrita de dados na banda principal do barramento PCIe apontando para um endereço de memória especial pertencente ao **LAPIC** do processador
+
+No **MSI-X**, cada vetor possui um endereço de memória física de destino e uma palavra de dados específica definidoes em uma tabela dinâmica mantida na memória interna do periférico, permitindo que cada interrupção seja direcionada a um núcleo específico da CPU
+
+<!-- end_slide -->
+
+Evolução de PIC para APIC e MSI-X
+========================================
+
+## PIC Legado
+- Centralizado em uma única CPU monolítica
+- Mapeado por pinagem e portas de controle físicas
+
+## MSI
+- Restrito a um único núcleo ou conjunto fixo de núcleos simultâneos
+- Endereço físico e palavra de dados fixos gravados na inicialização
+- Menor flexibilidade e desempenho em sistemas multicore
+
+## MSI-X
+- Flexível; cada interrupção pode ser direcionada a qualquer núcleo individual
+- Tabela na memória do dispositivo mapeada dinamicamente por vetor
+- Vetores em maior quantidade e mais flexiveis, permitindo melhor desempenho em sistemas multicore
+
+<!-- end_slide -->
+
+Acesso Direto à Memória (DMA)
+========================================
+
+Elimina a desvantagem inerente à E/S controloda por interrupções em fluxos de transferência de alto volume, onde cada byte que transita da memória principal para o periférico deve passar obrigatoriamente pelos registradores da CPU
+
+Funciona como um **coprocessador** especialista, assumindo o controle temporário dos barramentos do sistema para transferir blocos de dados diretamente entre os periféricos e a memória física através da técnica de roubo de ciclos (***cycle stealing***)
+
+```
+                            SISTEMA MULTIPROCESSADOR
++-----------------------------------------------------------------------------+
+|  +--------------------+                               +------------------+  |
+|  |     CPU Core       |                               |      IOMMU       |  |
+|  +---------+----------+                               +--------+---------+  |
+|            |                                                   ^            |
+|            v  Tradução MMU                                     |            |
+|    +---------------+                                           |            |
+|    | Virtual Memory|                                           | Tradução   |
+|    +---------------+                                           | IOVA -> SPA|
+|            |                                                   |            |
+|            +---------> --------+            |
++-----------------------------------------------------------------------------+
+                                     |
+                                     v
++-----------------------------------------------------------------------------+
+|                      Memória RAM Principal (DRAM)                           |
++------------------------------------+----------------------------------------+
+                                     ^
+                                     | Escrita direta na RAM (SPA)
++------------------------------------+----------------------------------------+
+|                               PCIe Bus                                      |
++------------------------------------+----------------------------------------+
+                                     ^
+                                     | Transação com endereço IOVA
++------------------------------------+----------------------------------------+
+|                        Dispositivo Periférico PCIe                          |
++-----------------------------------------------------------------------------+
+```
+
+<!-- end_slide -->
+
+DMA Scatter-Gather
+========================================
+
+O DMA tradicional depende de blocos contíguos de memória sendo limitado quando os dados estão fragmentados na RAM
+
+Na estrutura ***Scatter-Gather*** DMA, surgem os anéis de descritores alocados na memória do sistema
+
+Cada descritor aponta para um endereço não contíguo e especifica a quantidade de dados
+
+O módulo de DMA executa varreduras sequenciais nos descritores físicos, encadeando a transferência de múltiplas regiões de RAM não contíguas
+
+```
++----------------------------------------------+
+|                                              |
+| +------------------------------------------+ |
+| |                   RAM                    | |
+| |                                          | |
+| |  [Bloco A]     [Bloco C]      [Bloco B]  | |
+| |                                          | |
+| +------------------------------------------+ |
+|        ↓             ↓              ↓        |
+|                                              |
+|                Descritores DMA               |
+|                                              |
+|                  A → C → B                   |
+|                                              |
+|                      ↓                       |
+|                                              |
+|                Controlodar DMA               |
++----------------------------------------------+
+```
+
+<!-- end_slide -->
+
+Mecânica de tradução IOMMU
+========================================
+
+Adicionando uma camada de segurança, ***IOMMU*** atua como uma barreira lógica inserida na raiz do barramento PCIe. Sob esse modelo, os periféricos passam a referenciar os endereços em um espaço virtual específico de E/S chamado de Endereço Virtual de E/S (I/O *Virtual Address* - IOVA)
+
+
